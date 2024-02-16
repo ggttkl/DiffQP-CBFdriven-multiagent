@@ -28,7 +28,7 @@ class AuvEnv(gym.Env):
 
         self.reset()
 
-    def reset(self, seed=None, obs_cnt=1, agt_cnt=2):
+    def reset(self, seed=None, obs_cnt=1, agt_cnt=3):
         self.obs_cnt = obs_cnt
         self.agt_cnt = agt_cnt
         state_dim = agt_cnt*4+obs_cnt*2
@@ -36,6 +36,8 @@ class AuvEnv(gym.Env):
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(action_dim,), dtype=np.float32)
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(state_dim,), dtype=np.float32)
         self.state = 5 * np.random.randn(state_dim,)
+        self.state[0:2] = self.state[0:2] + np.array([5, 5])
+        self.state[2:4] = self.state[2:4] - np.array([5, 5])
         self.ref = np.concatenate((self.state[2:agt_cnt*2], self.state[:2]))
         self.state[2*agt_cnt:4*agt_cnt] = self.ref
         # self.ref = np.concatenate(
@@ -46,7 +48,7 @@ class AuvEnv(gym.Env):
         # self.ref[1] = self.state[1] + 10 * math.sin(theta)
         self.obstacle = 0.5 * (self.ref[0:2] + self.state[0:2]) + 0.2 * np.random.randn(2,)
         self.eps_cnt = 0
-        self.max_episode_steps = 50  # 1s 100steps reach
+        self.max_episode_steps = 100  # 1s 100steps reach
         self.state[state_dim - obs_cnt * 2:] = self.obstacle
 
         self.hreach = 0
@@ -60,6 +62,7 @@ class AuvEnv(gym.Env):
 
         self.positions = [[] for _ in range(agt_cnt)]
         # self.positions = []
+        self.last_control = 0 * np.random.randn(2*agt_cnt, )
         self.last_goal_dist = np.linalg.norm(self.state[0:agt_cnt*2] - self.state[agt_cnt*2:state_dim - obs_cnt * 2])
         print(f"self.obs_cnt={self.obs_cnt}")
         return self.state, {}
@@ -96,10 +99,13 @@ class AuvEnv(gym.Env):
         # --------redefine reward----------------
         dist_goal = np.linalg.norm(self.state[0:self.agt_cnt*2] - self.state[self.agt_cnt*2:self.agt_cnt*4])
         reward = 2 * (self.last_goal_dist - dist_goal)  # -1e-3 * dist_goal
-        # reward += 0.1 * math.exp(-np.linalg.norm(self.state[0:2] - self.state[2:4]))
+        reward += 1.5 * math.exp(-dist_goal)
         self.last_goal_dist = dist_goal
-        if np.linalg.norm(dist_goal) <= 1.0:
-            reward += 0.5 * (self.max_episode_steps - self.eps_cnt)
+        reward += -0.5 * np.linalg.norm(action - self.last_control)
+        self.last_control = action
+
+        if np.linalg.norm(dist_goal) <= 2.0:
+            reward += 1.5 * (self.max_episode_steps - self.eps_cnt)
             done = True
 
         if self.eps_cnt >= self.max_episode_steps:

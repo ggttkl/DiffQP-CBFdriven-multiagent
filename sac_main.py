@@ -40,10 +40,10 @@ env_name = 'AuvEnv-v0'
 # env_name = 'InvertedPendulumBulletEnv-v0'
 env = gym.make(env_name)
 
-n_games = 10000
+n_games = 20000
 n_episodes_to_consider = 50
 
-load_checkpoint = False
+load_checkpoint = True
 
 
 n_states = env.observation_space.shape[0]
@@ -86,7 +86,7 @@ if __name__=='__main__':
 
 
     # 保存文件
-    log_f = open(f"log_Single_integrator_lr_{lr}_batch_size_{batch_size}_n_hid1_{n_hid1}_n_hid2_{n_hid2}.txt", "w+")
+    log_f = open(f"log0217_Multi-agent_lr_{lr}_batch_size_{batch_size}_n_hid1_{n_hid1}_n_hid2_{n_hid2}.txt", "w+")
 
     for i in range(n_games):
         obs = env.reset()[0]
@@ -97,9 +97,9 @@ if __name__=='__main__':
             timesteps_count += 1
             action = agent.choose_action(obs)
             obs_, reward, done, info, _ = env.step(action)
-            # env.render()
-            if i % 50 == 0:
-                env.render()
+            env.render()
+            # if i % 50 == 0:
+            #     env.render()
             if not load_checkpoint:
                 agent.store_transition(obs, action, reward, obs_, done)
                 agent.learn_phil()
